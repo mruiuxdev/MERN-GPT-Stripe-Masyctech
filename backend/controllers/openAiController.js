@@ -1,35 +1,46 @@
-const { default: axios } = require("axios");
 const expressAsyncHandler = require("express-async-handler");
-const ContentHistory = require("../models/ContentHistory");
+const OpenAI = require("openai");
 const User = require("../models/User");
+const History = require("../models/History");
 
 const openAiController = expressAsyncHandler(async (req, res) => {
   const { prompt } = req.body;
 
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   try {
-    const response = await axios.post(
-      "https://api.openai.com/v1/completions",
-      {
-        model: "gpt-3.5-turbo-instruct",
-        prompt,
-        max_tokens: 30,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPEN_AI_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    if (!prompt) {
+      res.status(401);
 
-    const newContent = await ContentHistory({ user: req.user.id, content });
+      throw new Error("No prompt was provided");
+    }
 
-    const userFound = await User.findById(req.user.id);
-    userFound.history.push(newContent._id);
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 30,
+    });
 
-    const content = response?.data?.choices[0]?.text.trim();
+    const content = completion.choices[0].message.content.trim();
 
-    res.json({ status: "success", content });
+    if (!content) {
+      res.status(401);
+
+      throw new Error("Content generated failed");
+    } else {
+      const newContent = await History.create({
+        user: req.user._id,
+        content,
+      });
+
+      const userFound = await User.findById(req.user._id);
+      userFound.history.push(newContent._id);
+      await userFound.save();
+
+      res.json({ status: "success", newContent });
+    }
   } catch (error) {
     throw new Error(error);
   }
