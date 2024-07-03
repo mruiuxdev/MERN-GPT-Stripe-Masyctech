@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
-const User = require("../models/User");
 const expressAsyncHandler = require("express-async-handler");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 const register = expressAsyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
@@ -36,6 +37,65 @@ const register = expressAsyncHandler(async (req, res) => {
   });
 });
 
+const login = expressAsyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(401);
+
+    throw new Error("Invalid email or password");
+  }
+
+  const isMatchPassword = await bcrypt.compare(password, user?.password);
+  if (!isMatchPassword) {
+    res.status(401);
+
+    throw new Error("Invalid email or password");
+  }
+
+  const token = await jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "3d",
+  });
+
+  // Token into cookie (http only)
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
+
+  res.json({
+    status: "success",
+    message: "Login success",
+    token,
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+  });
+});
+
+const logout = expressAsyncHandler(async (req, res) => {
+  res.cookie("token", "", { maxAge: 1 });
+
+  res.json({ status: "success", message: "Logout successfully" });
+});
+
+const userProfile = expressAsyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password");
+  if (user) {
+    res.json({ status: "success", user });
+  } else {
+    res.json(404);
+
+    throw new Error("User not found");
+  }
+});
+
 module.exports = {
   register,
+  login,
+  logout,
+  userProfile,
 };
