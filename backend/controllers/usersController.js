@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const expressAsyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const isAuthenticated = require("../middlewares/isAuthenticated");
 
 const register = expressAsyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
@@ -58,16 +59,16 @@ const login = expressAsyncHandler(async (req, res) => {
     expiresIn: "3d",
   });
 
-  // Token into cookie (http only)
+  // * Token into cookie (http only)
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    maxAge: 24 * 60 * 60 * 1000, // * 1 day
   });
 
   res.json({
-    status: "success",
+    status: "succeeded",
     message: "Login success",
     token,
     _id: user._id,
@@ -79,17 +80,30 @@ const login = expressAsyncHandler(async (req, res) => {
 const logout = expressAsyncHandler(async (req, res) => {
   res.cookie("token", "", { maxAge: 1 });
 
-  res.json({ status: "success", message: "Logout successfully" });
+  res.json({ status: "succeeded", message: "Logout successfully" });
 });
 
 const userProfile = expressAsyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password");
+  const user = await User.findById(req.user.id)
+    .select("-password")
+    .populate("payment")
+    .populate("history");
   if (user) {
-    res.json({ status: "success", user });
+    res.json({ status: "succeeded", user });
   } else {
     res.json(404);
 
     throw new Error("User not found");
+  }
+});
+
+const checkAuth = expressAsyncHandler((req, res) => {
+  const decode = jwt.verify(req.cookies.token, process.env.JWT_SECRET);
+
+  if (decode) {
+    res.json({ isAuthenticated: true });
+  } else {
+    res.json({ isAuthenticated: false });
   }
 });
 
@@ -98,4 +112,5 @@ module.exports = {
   login,
   logout,
   userProfile,
+  checkAuth,
 };

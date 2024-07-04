@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema(
     trialExpires: {
       type: Date,
     },
-    subscription: {
+    subscriptionPlan: {
       type: String,
       enum: ["Free", "Trial", "Basic", "Premium"],
     },
@@ -33,9 +33,9 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    monthRequestCount: {
+    monthlyRequestCount: {
       type: Number,
-      default: 0,
+      default: 100,
     },
     nextBillingDate: Date,
     payment: [
@@ -51,7 +51,11 @@ const userSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
 const User = mongoose.model("User", userSchema);
