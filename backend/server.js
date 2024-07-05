@@ -3,6 +3,7 @@ dotenv.config({ path: "./.env.local" });
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 const cron = require("node-cron"); // ? for trial period
 const usersRouter = require("./routes/usersRouter");
 const { errorHandler } = require("./middlewares/errorHandler");
@@ -97,6 +98,12 @@ cron.schedule("0 0 1 * * *", async () => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(
+  cors({
+    origin: process.env.LOCALHOST_FRONT_END,
+    credentials: true,
+  })
+);
 
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/openai", openAiRouter);
