@@ -19,7 +19,6 @@ const checkApiRequestLimit = expressAsyncHandler(async (req, res, next) => {
 
   if (user.trialActive) {
     requestLimit = user.monthlyRequestCount;
-    console.log(requestLimit);
   }
 
   if (user.apiRequestCount >= requestLimit) {

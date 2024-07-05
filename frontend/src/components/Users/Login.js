@@ -42,11 +42,9 @@ export const Login = () => {
 
   useEffect(() => {
     if (mutation.isSuccess) {
-      setTimeout(() => {
-        navigate("/login");
-      }, 1000);
+      navigate("/dashboard");
     }
-  }, [mutation.isSuccess, navigate]);
+  }, [mutation.isSuccess]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
